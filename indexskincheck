@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Siena Beauty Parlour & Cosmetics - Skin Scanner</title>
+    <style>
+        body { 
+            font-family: 'Kalimati', 'Kokila', Arial, sans-serif; 
+            text-align: center; 
+            background-color: #fce4ec; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        h1 { color: #d81b60; margin-bottom: 5px; font-size: 28px; }
+        h3 { color: #880e4f; margin-top: 0; font-size: 20px; }
+        
+        .form-container, .result-container, .scanner-container {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 350px;
+            margin: 15px auto;
+            border-top: 4px solid #d81b60;
+        }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { font-weight: bold; color: #333; font-size: 18px; display: block; margin-bottom: 5px; }
+        .form-group select { 
+            width: 100%; padding: 10px; font-size: 16px; 
+            border: 1px solid #ccc; border-radius: 5px; background-color: #fff8fa;
+        }
+
+        #webcam-container, #image-preview { 
+            margin: 15px auto; border: 4px solid #d81b60; border-radius: 10px; 
+            max-width: 100%; overflow: hidden; background-color: #fff;
+            display: flex; justify-content: center;
+        }
+        
+        .btn-group { display: flex; flex-direction: column; gap: 12px; margin-top:15px; }
+        .row-btn-group { display: flex; justify-content: space-between; gap: 10px; margin-top: 15px;}
+        
+        button { 
+            color: white; padding: 12px 15px; font-size: 17px; 
+            border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%;
+        }
+        .cam-btn { background-color: #d81b60; }
+        .cam-btn:hover { background-color: #ad1457; }
+        .upload-btn { background-color: #00796b; }
+        .upload-btn:hover { background-color: #004d40; }
+        .submit-btn { background-color: #2e7d32; font-size: 20px; padding: 15px;}
+        .submit-btn:hover { background-color: #1b5e20; }
+        .info-btn { background-color: #1565c0; flex: 1;}
+        .info-btn:hover { background-color: #0d47a1; }
+        .back-btn { background-color: #f57c00; margin-top: 15px;}
+        .back-btn:hover { background-color: #e65100; }
+
+        .result-title { font-size: 24px; font-weight: bold; color: #333; margin: 10px 0; }
+        .customer-info { background: #fff8fa; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px dashed #d81b60; text-align: left;}
+        
+        #dynamic-details { 
+            margin-top: 15px; font-size: 18px; color: #333; 
+            background: #f9f9f9; padding: 15px; border-radius: 10px; 
+            display: none; border-left: 5px solid #d81b60; text-align: left;
+        }
+        .label { color: #d81b60; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>सिएना ब्युटी पार्लर एण्ड कस्मेटिक्स</h1>
+    <h3>AI Skin Scanner</h3>
+    
+    <div class="form-container" id="input-form">
+        <div class="form-group">
+            <label for="gender">लिङ्ग छान्नुहोस्:</label>
+            <select id="gender">
+                <option value="महिला">महिला (Female)</option>
+                <option value="पुरुष">पुरुष (Male)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="age">उमेर समूह:</label>
+            <select id="age">
+                <option value="२० वर्षभन्दा कम">२० वर्षभन्दा कम</option>
+                <option value="२० देखि ३० वर्ष">२० देखि ३० वर्ष</option>
+                <option value="३१ देखि ४० वर्ष">३१ देखि ४० वर्ष</option>
+                <option value="४० वर्षभन्दा माथि">४० वर्षभन्दा माथि</option>
+            </select>
+        </div>
+        
+        <div class="btn-group">
+            <button type="button" class="cam-btn" onclick="showCameraChoice()" id="scan-btn">क्यामेराबाट स्क्यान गर्नुहोस्</button>
+            <button type="button" class="upload-btn" onclick="document.getElementById('image-upload').click()">ग्यालरीबाट फोटो छान्नुहोस्</button>
+            <input type="file" id="image-upload" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+        </div>
+    </div>
+
+    <div class="form-container" id="camera-choice-ui" style="display: none;">
+        <h3 style="color:#d81b60; margin-bottom:15px;">कुन क्यामेरा खोल्ने?</h3>
+        <div class="btn-group">
+            <button type="button" class="cam-btn" onclick="initLiveCamera('environment')">पछाडिको क्यामेरा (Back)</button>
+            <button type="button" class="cam-btn" onclick="initLiveCamera('user')">अगाडिको क्यामेरा (Front)</button>
+            <button type="button" class="back-btn" onclick="resetApp()">पछाडि जानुहोस् (Back)</button>
+        </div>
+    </div>
+    
+    <div class="scanner-container" id="scanner-ui" style="display: none;">
+        <div id="webcam-container"></div>
+        <button type="button" class="submit-btn" onclick="submitPhoto()" id="submit-btn">पेश गर्नुहोस् (Submit)</button>
+        <button type="button" class="back-btn" onclick="resetApp()">रद्द गर्नुहोस् (Cancel)</button>
+    </div>
+
+    <div class="result-container" id="result-ui" style="display: none;">
+        <div id="customer-data" class="customer-info"></div>
+        <div id="result-title" class="result-title">नतिजा: </div>
+        
+        <div class="row-btn-group">
+            <button class="info-btn" onclick="showDetail('cause')">कारण हेर्नुहोस्</button>
+            <button class="info-btn" style="background-color: #00838f;" onclick="showDetail('recommendation')">सिफारिस हेर्नुहोस्</button>
+        </div>
+        
+        <div id="dynamic-details"></div>
+        
+        <button type="button" class="back-btn" onclick="resetApp()">फेरि स्क्यान गर्नुहोस् (Scan Again)</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    
+    <script type="text/javascript">
+        // यदि तपाईंले नयाँ मोडल बनाएर अर्को लिंक निकाल्नुभएको छ भने यहाँ परिवर्तन गर्नुहोला
+        const URL = "https://teachablemachine.withgoogle.com/models/EuM_k3rhb/";
+        
+        let model, webcam, maxPredictions;
+        let isLiveCamera = false;
+        let currentImageElement = null; 
+        let currentSkinClass = ""; 
+
+        // तपाईंको फोटोमा देखिएका ठ्याक्कै उही नामहरू यहाँ राखिएको छ
+        const skinData = {
+            "Oily skin face": {
+                cause: "छालामा धेरै प्राकृतिक तेल (Sebum) उत्पादन हुनु, हर्मोनको असन्तुलन, वा मौसमको प्रभाव।",
+                recommendation: "Jel Based Creams र Oil-Free Moisturizer को प्रयोग।"
+            },
+            "Dry skin face": {
+                cause: "मौसमको प्रभाव, कम पानी पिउनु, वा छालामा प्राकृतिक तेलको कमी हुनु।",
+                recommendation: "Oily Creams र राति सुत्नुअघि Hydrating Cream को प्रयोग।"
+            },
+            "Acne face": {
+                cause: "छालाको छिद्रहरू बन्द हुनु, ब्याक्टेरिया, अधिक तेल उत्पादन वा धुलो-धुवाँ।",
+                recommendation: "Pimple Treatment Facial र Anti-Acne Serum को नियमित प्रयोग।"
+            },
+            "malasma face": {
+                cause: "घामको हानिकारक किरण (UV Rays), गर्भावस्था जस्ता कारणले हर्मोनको असन्तुलन, वा वंशाणुगत प्रभाव।",
+                recommendation: "Anti-Pigmentation Brightening Facial, भिटामिन सी (Vitamin C) सीरम र अनिवार्य Sunscreen (SPF 50+)।"
+            },
+            "sunburn face": {
+                cause: "कुनै सुरक्षा (Sunscreen) बिना लामो समय घामको हानिकारक किरण (UV Rays) मा बस्नु।",
+                recommendation: "Cooling Facial, एलोभेरा जेल (Aloe Vera Gel) को प्रयोग, र बाहिर निस्कँदा अनिवार्य सनस्क्रिन।"
+            }
+        };
+
+        async function loadModelIfNeeded() {
+            if (!model) {
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+            }
+        }
+
+        function showCameraChoice() {
+            document.getElementById("input-form").style.display = "none";
+            document.getElementById("camera-choice-ui").style.display = "block";
+        }
+
+        async function initLiveCamera(facingMode) {
+            document.getElementById("camera-choice-ui").style.display = "none";
+            document.getElementById("scanner-ui").style.display = "block";
+            document.getElementById("submit-btn").innerText = "क्यामेरा खुल्दैछ...";
+            document.getElementById("submit-btn").disabled = true;
+
+            await loadModelIfNeeded();
+
+            const flip = (facingMode === "user"); 
+            webcam = new tmImage.Webcam(300, 300, flip); 
+            await webcam.setup({ facingMode: facingMode }); 
+            await webcam.play();
+            isLiveCamera = true;
+            
+            window.requestAnimationFrame(loop);
+
+            const webcamContainer = document.getElementById("webcam-container");
+            webcamContainer.innerHTML = ""; 
+            webcamContainer.appendChild(webcam.canvas);
+            currentImageElement = webcam.canvas; 
+            
+            document.getElementById("submit-btn").innerText = "पेश गर्नुहोस् (Submit)";
+            document.getElementById("submit-btn").disabled = false;
+        }
+
+        async function loop() {
+            if(isLiveCamera && webcam) {
+                webcam.update(); 
+                window.requestAnimationFrame(loop);
+            }
+        }
+
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            document.getElementById("input-form").style.display = "none";
+            document.getElementById("scanner-ui").style.display = "block";
+            document.getElementById("submit-btn").innerText = "लोड हुँदैछ...";
+            document.getElementById("submit-btn").disabled = true;
+            
+            await loadModelIfNeeded();
+
+            const img = document.createElement("img");
+            img.src = window.webkitURL ? window.webkitURL.createObjectURL(file) : window.URL.createObjectURL(file);
+            img.width = 300; 
+            img.style.borderRadius = "8px";
+
+            img.onload = () => {
+                const webcamContainer = document.getElementById("webcam-container");
+                webcamContainer.innerHTML = "";
+                webcamContainer.appendChild(img);
+                currentImageElement = img; 
+                
+                document.getElementById("submit-btn").innerText = "पेश गर्नुहोस् (Submit)";
+                document.getElementById("submit-btn").disabled = false;
+            }
+        }
+
+        async function submitPhoto() {
+            document.getElementById("submit-btn").innerText = "विश्लेषण हुँदैछ...";
+            document.getElementById("submit-btn").disabled = true;
+            
+            if (isLiveCamera && webcam) {
+                webcam.pause(); 
+            }
+
+            const prediction = await model.predict(currentImageElement);
+            
+            let highestProb = 0;
+            let bestClass = "";
+
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability > highestProb) {
+                    highestProb = prediction[i].probability;
+                    bestClass = prediction[i].className;
+                }
+            }
+            
+            currentSkinClass = bestClass; 
+
+            document.getElementById("scanner-ui").style.display = "none";
+            document.getElementById("result-ui").style.display = "block";
+            
+            const userGender = document.getElementById("gender").value;
+            const userAge = document.getElementById("age").value;
+            
+            document.getElementById("customer-data").innerHTML = `<span class='label'>विवरण:</span> ${userGender}, उमेर: ${userAge}`;
+            document.getElementById("result-title").innerHTML = `नतिजा: <span style="color:#d81b60;">${bestClass}</span>`;
+            
+            document.getElementById("dynamic-details").style.display = "none";
+        }
+
+        function showDetail(type) {
+            const detailsBox = document.getElementById("dynamic-details");
+            
+            let detectedSkin = currentSkinClass.trim();
+            let data = skinData[detectedSkin];
+            
+            if(!data) {
+                for (let key in skinData) {
+                    if (key.toLowerCase() === detectedSkin.toLowerCase()) {
+                        data = skinData[key];
+                        break;
+                    }
+                }
+            }
+            
+            if(data) {
+                if(type === 'cause') {
+                    detailsBox.innerHTML = `<span class='label'>मुख्य कारण:</span><br><br>${data.cause}`;
+                } else if(type === 'recommendation') {
+                    detailsBox.innerHTML = `<span class='label'>सिएना पार्लरको सिफारिस:</span><br><br>${data.recommendation}`;
+                }
+                detailsBox.style.display = "block";
+            } else {
+                detailsBox.innerHTML = `<span style='color:red;'><b>"${currentSkinClass}"</b> को विवरण कोडमा भेटिएन।</span>`;
+                detailsBox.style.display = "block";
+            }
+        }
+
+        function resetApp() {
+            if(webcam) { 
+                webcam.stop(); 
+                isLiveCamera = false;
+            }
+            
+            document.getElementById("result-ui").style.display = "none";
+            document.getElementById("scanner-ui").style.display = "none";
+            document.getElementById("camera-choice-ui").style.display = "none";
+            document.getElementById("input-form").style.display = "block";
+            
+            document.getElementById("image-upload").value = ""; 
+            currentImageElement = null;
+        }
+    </script>
+</body>
+</html>
